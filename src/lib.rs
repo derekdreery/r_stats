@@ -13,6 +13,7 @@ use std::f64::consts::PI;
 const FRAC_1_SQRT_2PI: f64 = 0.3989422804014327; // (2.0f64 * PI).sqrt().recip()
 const LN_SQRT_2PI: f64 = 0.9189385332046727; // (2.0 * PI).sqrt().ln()
 const LN_SQRT_PID2: f64 = 0.22579135264472733; // (0.5 * PI).sqrt().ln()
+const LN_2PI: f64 = 1.8378770664093453; // (2.0 * PI).ln()
 
 macro_rules! r_d__0 {
     ($log_p:expr) => {
@@ -60,6 +61,26 @@ macro_rules! r_d_cval {
             0.5 - $p + 0.5
         } else {
             $p
+        }
+    };
+}
+
+macro_rules! r_d_exp {
+    ($x:expr, $log:expr) => {
+        if $log {
+            $x
+        } else {
+            $x.exp()
+        }
+    };
+}
+
+macro_rules! r_d_fexp {
+    ($f:expr, $x:expr, $log:expr) => {
+        if $log {
+            -0.5 * $f.ln() + $x
+        } else {
+            $x.ln() / $f.sqrt()
         }
     };
 }
@@ -185,13 +206,13 @@ pub fn pt(x: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
     }
 }
 
-/// Compute the quantile function (inverse CDF function) for the t distribution at `x`.
-pub fn qt(x: f64, df: f64, ncp: Option<f64>, lower_tail: bool, log_p: bool) -> f64 {
-    if df <= 0.0 {
-        return f64::NAN;
-    }
-    todo!()
-}
+// /// Compute the quantile function (inverse CDF function) for the t distribution at `x`.
+// pub fn qt(x: f64, df: f64, ncp: Option<f64>, lower_tail: bool, log_p: bool) -> f64 {
+//    if df <= 0.0 {
+//        return f64::NAN;
+//    }
+//    todo!()
+//}
 
 //dbeta todo
 /// Compute the probability density functino of the beta distribution at x.
@@ -232,6 +253,118 @@ pub fn pbeta(x: f64, a: f64, b: f64, lower_tail: bool, log_p: bool) -> f64 {
     }
 }
 //qbeta todo
+
+/// Calculate the probability density function for the F distribution.
+pub fn df(x: f64, m: f64, n: f64, log: bool) -> f64 {
+    if x.is_nan() || m.is_nan() || n.is_nan() {
+        x + m + n
+    } else if m <= 0.0 || n <= 0.0 {
+        f64::NAN
+    } else if x < 0.0 {
+        r_d__0!(log)
+    } else if x == 0.0 {
+        if m > 2.0 {
+            r_d__0!(log)
+        } else if m == 2.0 {
+            r_d__1!(log)
+        } else {
+            f64::INFINITY
+        }
+    } else if m == f64::INFINITY && n == f64::INFINITY {
+        if x == 1.0 {
+            f64::INFINITY
+        } else {
+            r_d__0!(log)
+        }
+    } else if n == f64::INFINITY {
+        dgamma(x, m / 2.0, 2.0 / m, log)
+    } else if m > 1e14 {
+        let dens = dgamma(1.0 / x, n / 2.0, 2.0 / n, log);
+        if log {
+            dens - 2.0 * x.ln()
+        } else {
+            dens / (x * x)
+        }
+    } else {
+        let mut f = 1.0 / (n + x * m);
+        let q = n * f;
+        let p = x * m * f;
+        let dens = if m >= 2.0 {
+            f = m * q * 0.5;
+            dbinom_raw((m - 2.0) * 0.5, (m + n - 2.0) * 0.5, p, q, log)
+        } else {
+            f = m * m * q / (2.0 * p * (m + n));
+            dbinom_raw(m * 0.5, (m + n) * 0.5, p, q, log)
+        };
+        if log {
+            f.ln() + dens
+        } else {
+            f * dens
+        }
+    }
+}
+
+// /// Calculates the culmulative distribution function for the F distribution at q.
+// pub fn pf(q: f64, df1: f64, df2: f64, ncp: Option<f64>, lower_tail: bool, log_p: bool) -> f64 {
+//    if ncp.is_some() {
+//        todo!();
+//    }
+//    todo!()
+//}
+// qf
+
+// dchisq
+// pchisq
+// qchisq
+
+/// Calculates the probability density function for the gamma distribution at x.
+pub fn dgamma(x: f64, shape: f64, scale: f64, log: bool) -> f64 {
+    if x.is_nan() || shape.is_nan() || scale.is_nan() {
+        x + shape + scale
+    } else if shape < 0.0 || scale < 0.0 {
+        f64::NAN
+    } else if x < 0.0 {
+        r_d__0!(log)
+    } else if shape == 0.0 {
+        if x == 0.0 {
+            f64::INFINITY
+        } else {
+            r_d__0!(log)
+        }
+    } else if x == 0.0 {
+        if shape < 1.0 {
+            f64::INFINITY
+        } else if shape > 1.0 {
+            r_d__0!(log)
+        } else if log {
+            -scale.ln()
+        } else {
+            scale.recip()
+        }
+    } else if shape < 1.0 {
+        let pr = dpois_raw(shape, x / scale, log);
+        if log {
+            pr + if (shape / x).is_finite() {
+                (shape / x).ln()
+            } else {
+                // used only if (shape / x) overflows (to +inf).
+                shape.ln() - x.ln()
+            }
+        } else {
+            pr * shape / x
+        }
+    } else {
+        let pr = dpois_raw(shape - 1.0, x / scale, log);
+        if log {
+            pr - scale.ln()
+        } else {
+            pr / scale
+        }
+    }
+}
+
+// pgamma
+// qgamma
 
 /// Evaluates the "deviance part" from Catherine Loader's algorithm.
 fn bd0(x: f64, np: f64) -> f64 {
@@ -615,5 +748,75 @@ fn lbeta(a: f64, b: f64) -> f64 {
         ln_gamma(p) + (ln_gamma(q) - ln_gamma(p + q))
     } else {
         (gammafn(p) * (gammafn(q) / gammafn(p + q))).ln()
+    }
+}
+
+fn dbinom_raw(x: f64, n: f64, p: f64, q: f64, log: bool) -> f64 {
+    if p == 0.0 {
+        if x == 0.0 {
+            r_d__1!(log)
+        } else {
+            r_d__0!(log)
+        }
+    } else if q == 0.0 {
+        if x == n {
+            r_d__1!(log)
+        } else {
+            r_d__0!(log)
+        }
+    } else if x == 0.0 {
+        if n == 0.0 {
+            r_d__1!(log)
+        } else {
+            r_d_exp!(
+                if p < 0.1 {
+                    -bd0(n, n * q) - n * p
+                } else {
+                    n * q.ln()
+                },
+                log
+            )
+        }
+    } else if x == n {
+        r_d_exp!(
+            if q < 0.1 {
+                -bd0(n, n * p) - n * q
+            } else {
+                n * p.ln()
+            },
+            log
+        )
+    } else if x < 0.0 || x > n {
+        r_d__0!(log)
+    } else {
+        let lc = stirlerr(n) - stirlerr(x) - stirlerr(n - x) - bd0(x, n * p) - bd0(n - x, n * q);
+        let lf = LN_2PI + x.ln() + (-x / n).ln_1p();
+        r_d_exp!(lc - 0.5 * lf, log)
+    }
+}
+
+fn dpois_raw(x: f64, lambda: f64, log: bool) -> f64 {
+    debug_assert!(x >= 0.0);
+    debug_assert!(lambda >= 0.0);
+    if lambda == 0.0 {
+        if x == 0.0 {
+            r_d__1!(log)
+        } else {
+            r_d__0!(log)
+        }
+    } else if lambda == f64::INFINITY {
+        r_d__0!(log)
+    } else if x < 0.0 {
+        r_d__0!(log)
+    } else if x <= lambda + f64::MIN_POSITIVE {
+        r_d_exp!(-lambda, log)
+    } else if lambda < x * f64::MIN_POSITIVE {
+        if x == f64::INFINITY {
+            r_d__0!(log)
+        } else {
+            r_d_exp!(-lambda + x * lambda.ln() - lgammafn(x + 1.0), log)
+        }
+    } else {
+        r_d_fexp!(PI * 2.0 * x, -stirlerr(x) - bd0(x, lambda), log)
     }
 }
