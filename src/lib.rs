@@ -5,8 +5,10 @@
 //!
 //! I'm also not implementing the non-stats stuff, such as graph drawing.
 
+mod dpq;
 mod puruspe;
 
+use dpq::*;
 use puruspe::{betai, erf, gamma, inverf, ln_gamma};
 use std::f64::consts::PI;
 
@@ -14,76 +16,9 @@ const FRAC_1_SQRT_2PI: f64 = 0.3989422804014327; // (2.0f64 * PI).sqrt().recip()
 const LN_SQRT_2PI: f64 = 0.9189385332046727; // (2.0 * PI).sqrt().ln()
 const LN_SQRT_PID2: f64 = 0.22579135264472733; // (0.5 * PI).sqrt().ln()
 const LN_2PI: f64 = 1.8378770664093453; // (2.0 * PI).ln()
-
-macro_rules! r_d__0 {
-    ($log_p:expr) => {
-        if $log_p {
-            f64::NEG_INFINITY
-        } else {
-            0.0
-        }
-    };
-}
-
-macro_rules! r_d__1 {
-    ($log_p:expr) => {
-        if $log_p {
-            0.0
-        } else {
-            1.0
-        }
-    };
-}
-
-macro_rules! r_dt_0 {
-    ($lower_tail:expr, $log_p:expr) => {
-        if $lower_tail {
-            r_d__0!($log_p)
-        } else {
-            r_d__1!($log_p)
-        }
-    };
-}
-
-macro_rules! r_dt_1 {
-    ($lower_tail:expr, $log_p:expr) => {
-        if $lower_tail {
-            r_d__1!($log_p)
-        } else {
-            r_d__0!($log_p)
-        }
-    };
-}
-
-macro_rules! r_d_cval {
-    ($p:expr, $lower_tail:expr) => {
-        if $lower_tail {
-            0.5 - $p + 0.5
-        } else {
-            $p
-        }
-    };
-}
-
-macro_rules! r_d_exp {
-    ($x:expr, $log:expr) => {
-        if $log {
-            $x
-        } else {
-            $x.exp()
-        }
-    };
-}
-
-macro_rules! r_d_fexp {
-    ($f:expr, $x:expr, $log:expr) => {
-        if $log {
-            -0.5 * $f.ln() + $x
-        } else {
-            $x.ln() / $f.sqrt()
-        }
-    };
-}
+const LN2: f64 = 0.6931471805599453; // (2.0).ln()
+const PGAMMA_SCALE_FACTOR: f64 = 1.157920892373162e+77;
+const M_CUTOFF: f64 = LN2 * (f64::MAX_EXP as f64) / f64::EPSILON;
 
 /// Evaluate the probability density function of the normal distribution at x.
 pub fn dnorm(x: f64, mean: f64, sd: f64, log: bool) -> f64 {
@@ -171,9 +106,9 @@ pub fn pt(x: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
         return f64::NAN;
     }
     if x == f64::NEG_INFINITY {
-        return r_dt_0!(lower_tail, log_p);
+        return r_dt_0(lower_tail, log_p);
     } else if x == f64::INFINITY {
-        return r_dt_1!(lower_tail, log_p);
+        return r_dt_1(lower_tail, log_p);
     }
     if n == f64::INFINITY {
         return pnorm(x, 0.0, 1.0, lower_tail, log_p);
@@ -199,10 +134,10 @@ pub fn pt(x: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
         if lower_tail {
             (-0.5f64 * val.exp()).ln_1p()
         } else {
-            val - 2.0f64.ln()
+            val - LN2
         }
     } else {
-        r_d_cval!(val * 0.5, lower_tail)
+        r_d_cval(val * 0.5, lower_tail)
     }
 }
 
@@ -222,24 +157,24 @@ pub fn pbeta(x: f64, a: f64, b: f64, lower_tail: bool, log_p: bool) -> f64 {
     } else if a < 0.0 || b < 0.0 {
         f64::NAN
     } else if x <= 0.0 {
-        r_dt_0!(lower_tail, log_p)
+        r_dt_0(lower_tail, log_p)
     } else if x >= 1.0 {
-        r_dt_1!(lower_tail, log_p)
+        r_dt_1(lower_tail, log_p)
     } else if a == 0.0 || b == 0.0 || !a.is_finite() || !b.is_finite() {
         if a == 0.0 && b == 0.0 {
             if log_p {
-                -2.0f64.ln()
+                -LN2
             } else {
                 0.5
             }
         } else if a == 0.0 || a / b == 0.0 {
-            r_dt_1!(lower_tail, log_p)
+            r_dt_1(lower_tail, log_p)
         } else if b == 0.0 || b / a == 0.0 {
-            r_dt_0!(lower_tail, log_p)
+            r_dt_0(lower_tail, log_p)
         } else if x < 0.5 {
-            r_dt_0!(lower_tail, log_p)
+            r_dt_0(lower_tail, log_p)
         } else {
-            r_dt_1!(lower_tail, log_p)
+            r_dt_1(lower_tail, log_p)
         }
     } else {
         let mut w = betai(a, b, x);
@@ -261,12 +196,12 @@ pub fn df(x: f64, m: f64, n: f64, log: bool) -> f64 {
     } else if m <= 0.0 || n <= 0.0 {
         f64::NAN
     } else if x < 0.0 {
-        r_d__0!(log)
+        r_d__0(log)
     } else if x == 0.0 {
         if m > 2.0 {
-            r_d__0!(log)
+            r_d__0(log)
         } else if m == 2.0 {
-            r_d__1!(log)
+            r_d__1(log)
         } else {
             f64::INFINITY
         }
@@ -274,7 +209,7 @@ pub fn df(x: f64, m: f64, n: f64, log: bool) -> f64 {
         if x == 1.0 {
             f64::INFINITY
         } else {
-            r_d__0!(log)
+            r_d__0(log)
         }
     } else if n == f64::INFINITY {
         dgamma(x, m / 2.0, 2.0 / m, log)
@@ -304,17 +239,65 @@ pub fn df(x: f64, m: f64, n: f64, log: bool) -> f64 {
     }
 }
 
-// /// Calculates the culmulative distribution function for the F distribution at q.
-// pub fn pf(q: f64, df1: f64, df2: f64, ncp: Option<f64>, lower_tail: bool, log_p: bool) -> f64 {
-//    if ncp.is_some() {
-//        todo!();
-//    }
-//    todo!()
-//}
+/// Calculates the culmulative distribution function for the F distribution at x.
+pub fn pf(x: f64, df1: f64, df2: f64, ncp: Option<f64>, lower_tail: bool, log_p: bool) -> f64 {
+    if ncp.is_some() {
+        todo!();
+    }
+    if x.is_nan() || df1.is_nan() || df2.is_nan() {
+        x + df1 + df2
+    } else if df1 <= 0.0 || df2 <= 0.0 {
+        f64::NAN
+    } else if x <= 0.0 {
+        r_dt_0(lower_tail, log_p)
+    } else if x == f64::INFINITY {
+        r_dt_1(lower_tail, log_p)
+    } else if df2 == f64::INFINITY {
+        if df1 == f64::INFINITY {
+            if x < 1.0 {
+                r_dt_0(lower_tail, log_p)
+            } else if x > 1.0 {
+                r_dt_1(lower_tail, log_p)
+            } else {
+                // x == 1.0
+                if log_p {
+                    -LN2
+                } else {
+                    0.5
+                }
+            }
+        } else {
+            pchisq(x * df1, df1, lower_tail, log_p)
+        }
+    } else if df1 == f64::INFINITY {
+        pchisq(df2 / x, df2, !lower_tail, log_p)
+    } else {
+        if df1 * x > df2 {
+            pbeta(
+                df2 / (df2 + df1 * x),
+                df2 * 0.5,
+                df1 * 0.5,
+                !lower_tail,
+                log_p,
+            )
+        } else {
+            pbeta(
+                df1 * x / (df2 + df2 * x),
+                df1 * 0.5,
+                df2 * 0.5,
+                lower_tail,
+                log_p,
+            )
+        }
+    }
+}
 // qf
 
 // dchisq
-// pchisq
+pub fn pchisq(x: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
+    pgamma(x, df * 0.5, 2.0, lower_tail, log_p)
+}
+
 // qchisq
 
 /// Calculates the probability density function for the gamma distribution at x.
@@ -324,18 +307,18 @@ pub fn dgamma(x: f64, shape: f64, scale: f64, log: bool) -> f64 {
     } else if shape < 0.0 || scale < 0.0 {
         f64::NAN
     } else if x < 0.0 {
-        r_d__0!(log)
+        r_d__0(log)
     } else if shape == 0.0 {
         if x == 0.0 {
             f64::INFINITY
         } else {
-            r_d__0!(log)
+            r_d__0(log)
         }
     } else if x == 0.0 {
         if shape < 1.0 {
             f64::INFINITY
         } else if shape > 1.0 {
-            r_d__0!(log)
+            r_d__0(log)
         } else if log {
             -scale.ln()
         } else {
@@ -363,8 +346,31 @@ pub fn dgamma(x: f64, shape: f64, scale: f64, log: bool) -> f64 {
     }
 }
 
-// pgamma
+pub fn pgamma(x: f64, alph: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
+    if x.is_nan() || alph.is_nan() || scale.is_nan() {
+        x + alph + scale
+    } else if alph < 0.0 || scale <= 0.0 {
+        f64::NAN
+    } else {
+        let x = x / scale;
+        if x.is_nan() {
+            x
+        } else if alph == 0.0 {
+            if x <= 0.0 {
+                r_dt_0(lower_tail, log_p)
+            } else {
+                r_dt_1(lower_tail, log_p)
+            }
+        } else {
+            pgamma_raw(x, alph, lower_tail, log_p)
+        }
+    }
+}
 // qgamma
+
+// dpois
+// ppois
+// qpois
 
 /// Evaluates the "deviance part" from Catherine Loader's algorithm.
 fn bd0(x: f64, np: f64) -> f64 {
@@ -674,6 +680,67 @@ fn gammafn(x: f64) -> f64 {
     }
 }
 
+fn lgamma1p(a: f64) -> f64 {
+    const EULERS_CONST: f64 = 0.5772156649015328606065120900824024;
+
+    const N: usize = 40;
+
+    const COEFFS: &[f64] = &[
+        0.3224670334241132182362075833230126e-0, /* = (zeta(2)-1)/2 */
+        0.6735230105319809513324605383715000e-1, /* = (zeta(3)-1)/3 */
+        0.2058080842778454787900092413529198e-1,
+        0.7385551028673985266273097291406834e-2,
+        0.2890510330741523285752988298486755e-2,
+        0.1192753911703260977113935692828109e-2,
+        0.5096695247430424223356548135815582e-3,
+        0.2231547584535793797614188036013401e-3,
+        0.9945751278180853371459589003190170e-4,
+        0.4492623673813314170020750240635786e-4,
+        0.2050721277567069155316650397830591e-4,
+        0.9439488275268395903987425104415055e-5,
+        0.4374866789907487804181793223952411e-5,
+        0.2039215753801366236781900709670839e-5,
+        0.9551412130407419832857179772951265e-6,
+        0.4492469198764566043294290331193655e-6,
+        0.2120718480555466586923135901077628e-6,
+        0.1004322482396809960872083050053344e-6,
+        0.4769810169363980565760193417246730e-7,
+        0.2271109460894316491031998116062124e-7,
+        0.1083865921489695409107491757968159e-7,
+        0.5183475041970046655121248647057669e-8,
+        0.2483674543802478317185008663991718e-8,
+        0.1192140140586091207442548202774640e-8,
+        0.5731367241678862013330194857961011e-9,
+        0.2759522885124233145178149692816341e-9,
+        0.1330476437424448948149715720858008e-9,
+        0.6422964563838100022082448087644648e-10,
+        0.3104424774732227276239215783404066e-10,
+        0.1502138408075414217093301048780668e-10,
+        0.7275974480239079662504549924814047e-11,
+        0.3527742476575915083615072228655483e-11,
+        0.1711991790559617908601084114443031e-11,
+        0.8315385841420284819798357793954418e-12,
+        0.4042200525289440065536008957032895e-12,
+        0.1966475631096616490411045679010286e-12,
+        0.9573630387838555763782200936508615e-13,
+        0.4664076026428374224576492565974577e-13,
+        0.2273736960065972320633279596737272e-13,
+        0.1109139947083452201658320007192334e-13, /* = (zeta(40+1)-1)/(40+1) */
+    ];
+
+    const C: f64 = 0.2273736845824652515226821577978691e-12; /* zeta(N+2)-1 */
+    const TOL_LOGCF: f64 = 1e-14;
+    if a.abs() >= 0.5 {
+        return lgammafn(a + 1.0);
+    }
+
+    let mut lgam = C * logcf(-a / 2.0, N as f64 + 2.0, 1.0, TOL_LOGCF);
+    for i in (N - 1)..=0 {
+        lgam = COEFFS[i] - a * lgam;
+    }
+    (a * lgam - EULERS_CONST) * a - log1pmx(a)
+}
+
 fn chebyshev_eval(x: f64, a: &[f64]) -> f64 {
     // sanity checks.
     if a.len() < 1 || a.len() > 1000 {
@@ -754,44 +821,44 @@ fn lbeta(a: f64, b: f64) -> f64 {
 fn dbinom_raw(x: f64, n: f64, p: f64, q: f64, log: bool) -> f64 {
     if p == 0.0 {
         if x == 0.0 {
-            r_d__1!(log)
+            r_d__1(log)
         } else {
-            r_d__0!(log)
+            r_d__0(log)
         }
     } else if q == 0.0 {
         if x == n {
-            r_d__1!(log)
+            r_d__1(log)
         } else {
-            r_d__0!(log)
+            r_d__0(log)
         }
     } else if x == 0.0 {
         if n == 0.0 {
-            r_d__1!(log)
+            r_d__1(log)
         } else {
-            r_d_exp!(
+            r_d_exp(
                 if p < 0.1 {
                     -bd0(n, n * q) - n * p
                 } else {
                     n * q.ln()
                 },
-                log
+                log,
             )
         }
     } else if x == n {
-        r_d_exp!(
+        r_d_exp(
             if q < 0.1 {
                 -bd0(n, n * p) - n * q
             } else {
                 n * p.ln()
             },
-            log
+            log,
         )
     } else if x < 0.0 || x > n {
-        r_d__0!(log)
+        r_d__0(log)
     } else {
         let lc = stirlerr(n) - stirlerr(x) - stirlerr(n - x) - bd0(x, n * p) - bd0(n - x, n * q);
         let lf = LN_2PI + x.ln() + (-x / n).ln_1p();
-        r_d_exp!(lc - 0.5 * lf, log)
+        r_d_exp(lc - 0.5 * lf, log)
     }
 }
 
@@ -800,23 +867,441 @@ fn dpois_raw(x: f64, lambda: f64, log: bool) -> f64 {
     debug_assert!(lambda >= 0.0);
     if lambda == 0.0 {
         if x == 0.0 {
-            r_d__1!(log)
+            r_d__1(log)
         } else {
-            r_d__0!(log)
+            r_d__0(log)
         }
     } else if lambda == f64::INFINITY {
-        r_d__0!(log)
+        r_d__0(log)
     } else if x < 0.0 {
-        r_d__0!(log)
+        r_d__0(log)
     } else if x <= lambda + f64::MIN_POSITIVE {
-        r_d_exp!(-lambda, log)
+        r_d_exp(-lambda, log)
     } else if lambda < x * f64::MIN_POSITIVE {
         if x == f64::INFINITY {
-            r_d__0!(log)
+            r_d__0(log)
         } else {
-            r_d_exp!(-lambda + x * lambda.ln() - lgammafn(x + 1.0), log)
+            r_d_exp(-lambda + x * lambda.ln() - lgammafn(x + 1.0), log)
         }
     } else {
-        r_d_fexp!(PI * 2.0 * x, -stirlerr(x) - bd0(x, lambda), log)
+        r_d_fexp(PI * 2.0 * x, -stirlerr(x) - bd0(x, lambda), log)
+    }
+}
+
+fn pgamma_raw(x: f64, alph: f64, lower_tail: bool, log_p: bool) -> f64 {
+    debug_assert!(alph > 0.0);
+    debug_assert!(!x.is_nan());
+    if x <= 0.0 {
+        return r_dt_0(lower_tail, log_p);
+    }
+    if x == f64::INFINITY {
+        return r_dt_1(lower_tail, log_p);
+    }
+
+    let res = if x < 1.0 {
+        pgamma_smallx(x, alph, lower_tail, log_p)
+    } else if x < alph - 1.0 && x < 0.8 * (alph + 50.0) {
+        let sum = pd_upper_series(x, alph, log_p);
+        let d = dpois_wrap(alph, x, log_p);
+        if !lower_tail {
+            if log_p {
+                r_log1_exp(d + sum)
+            } else {
+                1.0 - d * sum
+            }
+        } else {
+            if log_p {
+                sum + d
+            } else {
+                sum * d
+            }
+        }
+    } else if alph - 1.0 < x && alph < 0.8 * (x + 50.0) {
+        let d = dpois_wrap(alph, x, log_p);
+        let sum = if alph < 1.0 {
+            if x * f64::EPSILON > 1.0 - alph {
+                r_d__1(log_p)
+            } else {
+                let f = pd_lower_cf(alph, x - (alph - 1.0)) * x / alph;
+                if log_p {
+                    f.ln()
+                } else {
+                    f
+                }
+            }
+        } else {
+            let s = pd_lower_series(x, alph - 1.0);
+            if log_p {
+                s.ln_1p()
+            } else {
+                1.0 + s
+            }
+        };
+
+        if !lower_tail {
+            if log_p {
+                sum + d
+            } else {
+                sum * d
+            }
+        } else {
+            if log_p {
+                r_log1_exp(d + sum)
+            } else {
+                1.0 - d * sum
+            }
+        }
+    } else {
+        ppois_asymp(alph - 1.0, x, !lower_tail, log_p)
+    };
+
+    if !log_p && res < f64::MIN_POSITIVE / f64::EPSILON {
+        pgamma_raw(x, alph, lower_tail, true)
+    } else {
+        res
+    }
+}
+
+fn pgamma_smallx(x: f64, alph: f64, lower_tail: bool, log_p: bool) -> f64 {
+    let mut sum = 0.0;
+    let mut c = alph;
+    let mut n = 0.0;
+
+    loop {
+        n += 1.0;
+        c *= -x / n;
+        let term = c / (alph + n);
+        sum += term;
+        if term.abs() > f64::EPSILON * sum.abs() {
+            break;
+        }
+    }
+
+    if lower_tail {
+        let f1 = if log_p { sum.ln_1p() } else { 1.0 + sum };
+        let f2 = if alph > 1.0 {
+            let f2tmp = dpois_raw(alph, x, log_p);
+            if log_p {
+                f2tmp + x
+            } else {
+                f2tmp * x.exp()
+            }
+        } else if log_p {
+            alph * x.ln() - lgamma1p(alph)
+        } else {
+            x.powf(alph) / lgamma1p(alph).exp()
+        };
+        if log_p {
+            f1 + f2
+        } else {
+            f1 * f2
+        }
+    } else {
+        let lf2 = alph * x.ln() - lgamma1p(alph);
+        if log_p {
+            r_log1_exp(sum.ln_1p() + lf2)
+        } else {
+            let f1m1 = sum;
+            let f2m1 = lf2.exp_m1();
+            -(f1m1 + f2m1 + f1m1 * f2m1)
+        }
+    }
+}
+
+fn pd_upper_series(x: f64, mut y: f64, log_p: bool) -> f64 {
+    let mut term = x / y;
+    let mut sum = term;
+
+    loop {
+        y += 1.0;
+        term *= x / y;
+        sum += term;
+        if term > sum + f64::EPSILON {
+            break;
+        }
+    }
+
+    if log_p {
+        sum.ln()
+    } else {
+        sum
+    }
+}
+
+fn pd_lower_cf(y: f64, d: f64) -> f64 {
+    const MAX_ITER: f64 = 200_000.0;
+
+    if y == 0.0 {
+        return 0.0;
+    }
+
+    let mut f0 = y / d;
+    if (y - 1.0).abs() < d.abs() * f64::EPSILON {
+        return f0;
+    }
+
+    if f0 > 1.0 {
+        f0 = 1.0;
+    }
+
+    let mut c2 = y;
+    let mut c4 = d;
+
+    let mut a1 = 0.0;
+    let mut b1 = 1.0;
+    let mut a2 = y;
+    let mut b2 = d;
+
+    while b2 > PGAMMA_SCALE_FACTOR {
+        a1 /= PGAMMA_SCALE_FACTOR;
+        b1 /= PGAMMA_SCALE_FACTOR;
+        a2 /= PGAMMA_SCALE_FACTOR;
+        b2 /= PGAMMA_SCALE_FACTOR;
+    }
+
+    let mut i = 0.0;
+    let mut of = -1.0;
+    while i < MAX_ITER {
+        i += 1.0;
+        c2 -= 1.0;
+        let c3 = i * c2;
+        c4 += 2.0;
+
+        a1 = c4 * a2 + c3 * a1;
+        b1 = c4 * b2 + c3 * b1;
+
+        i += 1.0;
+        c2 -= 1.0;
+        let c3 = i * c2;
+        c4 += 2.0;
+
+        a2 = c4 * a1 + c3 * a2;
+        b2 = c4 * b1 + c3 * b2;
+
+        if b2 > PGAMMA_SCALE_FACTOR {
+            a1 /= PGAMMA_SCALE_FACTOR;
+            b1 /= PGAMMA_SCALE_FACTOR;
+            a2 /= PGAMMA_SCALE_FACTOR;
+            b2 /= PGAMMA_SCALE_FACTOR;
+        }
+
+        if b2 != 0.0 {
+            let f = a2 / b2;
+            if (f - of).abs() <= f64::EPSILON * f0.max(f.abs()) {
+                return f;
+            }
+            of = f;
+        }
+    }
+    panic!("pd_lower_cf did not converge");
+}
+
+fn pd_lower_series(lambda: f64, mut y: f64) -> f64 {
+    let mut term = 1.0;
+    let mut sum = 0.0;
+
+    while y >= 1.0 && term > sum * f64::EPSILON {
+        term *= y / lambda;
+        sum += term;
+        y -= 1.0;
+    }
+
+    if y != y.floor() {
+        let f = pd_lower_cf(y, lambda + 1.0 - y);
+        sum += term * f;
+    }
+
+    sum
+}
+
+/// Continued fraction for calculation of
+///    1/i + x/(i+d) + x^2/(i+2*d) + x^3/(i+3*d) + ... = sum_{k=0}^Inf x^k/(i+k*d)
+///
+/// auxilary in log1pmx() and lgamma1p()
+fn logcf(x: f64, i: f64, d: f64, eps: f64) -> f64 {
+    debug_assert!(i > 0.0);
+    debug_assert!(d >= 0.0);
+
+    let mut c1 = 2.0 * d;
+    let mut c2 = i + d;
+    let mut c4 = c2 + d;
+    let mut a1 = c2;
+    let mut b1 = i * (c2 - i * x);
+    let mut b2 = d * d * x;
+    let mut a2 = c4 * c2 - b2;
+
+    b2 = c4 * b1 - i * b2;
+
+    while (a2 * b1 - a1 * b2).abs() > (eps * b1 * b2).abs() {
+        let mut c3 = c2 * c2 * x;
+        c2 += d;
+        c4 += d;
+        a1 = c4 * a2 - c3 * a1;
+        b1 = c4 * b2 - c3 * b1;
+
+        c3 = c1 * c1 * x;
+        c1 += d;
+        c4 += d;
+        a2 = c4 * a1 - c3 * a2;
+        b2 = c4 * b1 - c3 * b2;
+
+        if b2.abs() > PGAMMA_SCALE_FACTOR {
+            a1 /= PGAMMA_SCALE_FACTOR;
+            b1 /= PGAMMA_SCALE_FACTOR;
+            a2 /= PGAMMA_SCALE_FACTOR;
+            b2 /= PGAMMA_SCALE_FACTOR;
+        } else if b2.abs() < PGAMMA_SCALE_FACTOR.recip() {
+            a1 *= PGAMMA_SCALE_FACTOR;
+            b1 *= PGAMMA_SCALE_FACTOR;
+            a2 *= PGAMMA_SCALE_FACTOR;
+            b2 *= PGAMMA_SCALE_FACTOR;
+        }
+    }
+
+    a2 / b2
+}
+
+/// Accurate calculation of log(1+x)-x, particularly for small x.
+fn log1pmx(x: f64) -> f64 {
+    const MIN_LOG1_VALUE: f64 = -0.79149064;
+
+    if x > 1.0 || x < MIN_LOG1_VALUE {
+        x.ln_1p() - x
+    } else {
+        let r = x / (2.0 + x);
+        let y = r * r;
+        if x.abs() < 1e-2 {
+            r * ((((2.0 / 9.0 * y + 2.0 / 7.0) * y + 2.0 / 5.0) * y + 2.0 / 3.0) * y - x)
+        } else {
+            const TOL_LOGCF: f64 = 1e-14;
+            r * (2.0 * y * logcf(y, 3.0, 2.0, TOL_LOGCF) - x)
+        }
+    }
+}
+
+/// dpois_wrap (xp1, lambda) := dpois(xp1 - 1, lambda);  where
+/// dpois(k, L) := exp(-L) L^k / gamma(k+1)  {the usual Poisson probabilities}
+fn dpois_wrap(x_plus_1: f64, lambda: f64, give_log: bool) -> f64 {
+    debug_assert!(x_plus_1 > 0.0);
+    debug_assert!(lambda > 0.0);
+    if lambda == f64::INFINITY {
+        r_d__0(give_log)
+    } else if x_plus_1 > 1.0 {
+        dpois_raw(x_plus_1 - 1.0, lambda, give_log)
+    } else if lambda > (x_plus_1 - 1.0).abs() * M_CUTOFF {
+        r_d_exp(-lambda - lgammafn(x_plus_1), give_log)
+    } else {
+        let d = dpois_raw(x_plus_1, lambda, give_log);
+
+        if give_log {
+            d + (x_plus_1 / lambda).ln()
+        } else {
+            d * (x_plus_1 / lambda)
+        }
+    }
+}
+
+fn ppois_asymp(x: f64, lambda: f64, lower_tail: bool, log_p: bool) -> f64 {
+    const COEFS_A: &[f64] = &[
+        -1e99, /* placeholder used for 1-indexing */
+        2.0 / 3.0,
+        -4.0 / 135.0,
+        8.0 / 2835.0,
+        16.0 / 8505.0,
+        -8992.0 / 12629925.0,
+        -334144.0 / 492567075.0,
+        698752.0 / 1477701225.0,
+    ];
+
+    const COEFS_B: &[f64] = &[
+        -1e99, /* placeholder */
+        1.0 / 12.0,
+        1.0 / 288.0,
+        -139.0 / 51840.0,
+        -571.0 / 2488320.0,
+        163879.0 / 209018880.0,
+        5246819.0 / 75246796800.0,
+        -534703531.0 / 902961561600.0,
+    ];
+
+    let dfm = lambda - x;
+    let pt_ = -log1pmx(dfm / x);
+    let mut s2pt = (2.0 * x * pt_).sqrt();
+    if dfm < 0.0 {
+        s2pt = -s2pt;
+    }
+
+    let mut res12 = 0.0;
+    let mut res1_ig = x.sqrt();
+    let mut res1_term = x.sqrt();
+    let mut res2_ig = s2pt;
+    let mut res2_term = s2pt;
+
+    for (i, (coeff_a, coeff_b)) in COEFS_A
+        .iter()
+        .copied()
+        .zip(COEFS_B.iter().copied())
+        .enumerate()
+    {
+        res12 += res1_ig * coeff_a + res2_ig * coeff_b;
+        res1_term *= pt_ / i as f64;
+        res2_term *= 2.0 * pt_ / (2.0 * i as f64 + 1.0);
+        res1_ig = res1_ig / x + res1_term;
+        res2_ig = res2_ig / x + res2_term;
+    }
+
+    let mut elfb = x;
+    let mut elfb_term = 1.0;
+
+    for coeff_b in COEFS_B.iter().copied() {
+        elfb += elfb_term * coeff_b;
+        elfb_term /= x;
+    }
+
+    if !lower_tail {
+        elfb = -elfb;
+    }
+
+    let f = res12 / elfb;
+    let np = pnorm(s2pt, 0.0, 1.0, !lower_tail, log_p);
+
+    if log_p {
+        let n_d_over_p = dpnorm(s2pt, !lower_tail, np);
+        np + (f * n_d_over_p).ln_1p()
+    } else {
+        let nd = dnorm(s2pt, 0.0, 1.0, log_p);
+        np + f * nd
+    }
+}
+
+///       dnorm (x, 0, 1, FALSE)
+/// ----------------------------------
+/// pnorm (x, 0, 1, lower_tail, FALSE)
+///
+/// expects
+/// lp = pnorm (x, 0, 1, lower_tail, TRUE)
+fn dpnorm(mut x: f64, mut lower_tail: bool, lp: f64) -> f64 {
+    if x < 0.0 {
+        x = -x;
+        lower_tail = !lower_tail;
+    }
+
+    if x > 10.0 && !lower_tail {
+        let mut term = x.recip();
+        let mut sum = term;
+        let x2 = x * x;
+        let mut i = 1.0;
+        loop {
+            term *= -i / x2;
+            sum += term;
+            i += 2.0;
+            if term.abs() > f64::EPSILON * sum {
+                break;
+            }
+        }
+
+        sum.recip()
+    } else {
+        dnorm(x, 0.0, 1.0, false) / lp.exp()
     }
 }
