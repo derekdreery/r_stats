@@ -6,5 +6,8 @@ authors = ["Richard Dodd <richard.o.dodd@gmail.com>"]
 edition = "2018"
 license = "GPLv2"
 
+[build-dependencies]
+cc = "1.0.54"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
