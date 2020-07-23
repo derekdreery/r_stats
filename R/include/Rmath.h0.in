@@ -28,9 +28,6 @@
    It is part of the API and supports 'standalone Rmath'.
 
 */
-
-/* rdodd altered to work without autotools */
-
 #ifndef RMATH_H
 #define RMATH_H
 
@@ -55,7 +52,7 @@ using namespace std;
 /*-- Mathlib as part of R --  define this for standalone : */
 /* #undef MATHLIB_STANDALONE */
 
-#define R_VERSION_STRING "4.1.0"
+#define R_VERSION_STRING "@PACKAGE_VERSION@"
 
 // Legacy defines -- C99 functions which R >= 3.5.0 requires
 #ifndef HAVE_EXPM1
@@ -69,7 +66,7 @@ using namespace std;
 #endif
 
 #ifndef HAVE_WORKING_LOG1P
-# define HAVE_WORKING_LOG1P 1
+@RMATH_HAVE_WORKING_LOG1P@
 #endif
 
 #if !defined(HAVE_WORKING_LOG1P)

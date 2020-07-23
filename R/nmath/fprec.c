@@ -35,6 +35,7 @@
  *    conform to the IEEE 754 standard.
  */
 
+#include <config.h>
 #include "nmath.h"
 
 /* Improvements by Martin Maechler, May 1997;
@@ -59,7 +60,7 @@ double fprec(double x, double digits)
     double l10, pow10, sgn, p10, P10;
     int e10, e2, do_round, dig;
     /* Max.expon. of 10 (=308.2547) */
-    static const int max10e = (int) (DBL_MAX_EXP * M_LOG10_2);
+    const static int max10e = (int) (DBL_MAX_EXP * M_LOG10_2);
 
     if (ISNAN(x) || ISNAN(digits))
 	return x + digits;
@@ -87,7 +88,7 @@ double fprec(double x, double digits)
 	if(e10 > max10e) { /* numbers less than 10^(dig-1) * 1e-308 */
 	    p10 =  R_pow_di(10., e10-max10e);
 	    e10 = max10e;
-	}
+	} 
 	if(e10 > 0) { /* Try always to have pow >= 1
 			 and so exactly representable */
 	    pow10 = R_pow_di(10., e10);

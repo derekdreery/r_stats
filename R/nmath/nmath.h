@@ -40,17 +40,16 @@
 #include <math.h>
 #include <float.h> /* DBL_MIN etc */
 
-/* #include <Rconfig.h> */
 #include <Rmath.h>
 
 /* Used internally only */
 double  Rf_d1mach(int);
 double	Rf_gamma_cody(double);
 
-/* #include <R_ext/RS.h> */
+#include <R_ext/RS.h>
 
 /* possibly needed for debugging */
-/* #include <R_ext/Print.h> */
+#include <R_ext/Print.h>
 
 /* moved from dpq.h */
 #ifdef HAVE_NEARBYINT
