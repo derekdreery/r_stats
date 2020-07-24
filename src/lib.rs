@@ -17,7 +17,7 @@
 //! I've done some work on rust versions of these functions in the `riir` branch. This branch
 //! should be used for testing those functions in future.
 //!
-//! R is released as GPLv2 which I interperet as meaning this library must also be released as
+//! R is released as GPLv2 which I interpret as meaning this library must also be released as
 //! GPLv2. If all the functions were replaced with native rust ones, then the license could be
 //! changed to something more permissive.
 
@@ -26,44 +26,207 @@ pub mod ffi {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+// Normal distribution
+
 /// Evaluate the probability density function of the normal distribution with mean `mu` and
 /// variance `sigma` at `x`.
 ///
 /// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
-/// higher numerical accuracy than naively calling `.ln()`.
+/// higher numerical accuracy than calling `.ln()` on the result.
 pub fn normal_pdf(x: f64, mu: f64, sigma: f64, give_log: bool) -> f64 {
     unsafe { ffi::dnorm4(x, mu, sigma, c_bool(give_log)) }
 }
 
 /// Evaluate the culmulative density function of the normal distribution with mean `mu` and
-/// variance `sigma` at `x`. (The integral of the pdf up to `x`).
+/// variance `sigma` at `x`.
 ///
-/// If `lower_tail` is true, the integral from `-f64::NEG_INFINITY` to `x` is evaluated, else the
-/// integral from `x` to `f64::INFINITY` is evaluated instead. "Usual" behaviour corresponds to
-/// `true`. Numerical accuracy may be higher than naively calculating `1.0 - normal_cdf(.., false,
-/// ..)` for `normal_cdf(.., true, ..)`.
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
-/// higher numerical accuracy than naively calling `.ln()`.
+/// higher numerical accuracy than calling `.ln()` on the result.
 pub fn normal_cdf(x: f64, mu: f64, sigma: f64, lower_tail: bool, log_p: bool) -> f64 {
     unsafe { ffi::pnorm5(x, mu, sigma, c_bool(lower_tail), c_bool(log_p)) }
 }
 
 /// Evaluate the quantile function of the normal distribution with mean `mu` and
-/// variance `sigma` at probability `p`. The quantile function is the inverse of the cdf.
+/// variance `sigma` at probability `p`.
 ///
-/// If `lower_tail` is true, the integral from `-f64::NEG_INFINITY` to `x` is evaluated, else the
-/// integral from `x` to `f64::INFINITY` is evaluated instead. "Usual" behaviour corresponds to
-/// `true`. Numerical accuracy may be higher than naively calculating `1.0 - normal_cdf(.., false,
-/// ..)` for `normal_cdf(.., true, ..)`.
+/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
-/// higher numerical accuracy than naively calling `.ln()`.
+/// higher numerical accuracy than calling `.ln()` on the result.
 pub fn normal_quantile(p: f64, mu: f64, sigma: f64, lower_tail: bool, log_p: bool) -> f64 {
     unsafe { ffi::qnorm5(p, mu, sigma, c_bool(lower_tail), c_bool(log_p)) }
 }
 
-// TODO all other distributions.
+/// Evaluate the culmulative density function of the normal distribution with mean `mu` and
+/// variance `sigma` at `x`. Both integrals (`(-∞, x)` and `(x, ∞)`) are returned in that order.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn normal_cdf_both(x: f64, mu: f64, sigma: f64, log_p: bool) -> (f64, f64) {
+    // Since we are using `mu` and `sigma` rather than 0 and 1, we have to check those values for
+    // edge cases.
+    if x.is_nan() || mu.is_nan() || sigma.is_nan() {
+        let nan = x + mu + sigma;
+        (nan, nan)
+    } else if !x.is_finite() && mu == x {
+        (f64::NAN, f64::NAN)
+    } else if sigma <= 0.0 {
+        if sigma < 0.0 {
+            (f64::NAN, f64::NAN)
+        } else {
+            (zero(log_p), one(log_p))
+        }
+    } else {
+        let x_canon = (x - mu) / sigma;
+        if !x_canon.is_finite() {
+            return if x < mu {
+                (zero(log_p), one(log_p))
+            } else {
+                (one(log_p), zero(log_p))
+            };
+        }
+        let x = x_canon;
+        let mut lower: f64 = 0.0;
+        let mut upper: f64 = 0.0;
+        unsafe { ffi::pnorm_both(x, &mut lower, &mut upper, 2, c_bool(log_p)) }
+        (lower, upper)
+    }
+}
+
+// todo uniform distribution (it kinda feels too trivial to include).
+
+// Gamma distribution
+
+/// Evaluate the probability density function of the gamma distribution with given `shape` and
+/// `scale` at `x`.
+///
+/// The shape is sometimes labelled `alpha`, and the scale is sometimes parameterised as
+/// (`1 / lambda`).
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn gamma_pdf(x: f64, shape: f64, scale: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dgamma(x, shape, scale, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative density function of the gamma distribution with `shape` and `scale` at
+/// `x`.
+///
+/// The shape is sometimes labelled `alpha`, and the scale is sometimes parameterised as
+/// (`1 / lambda`).
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn gamma_cdf(x: f64, shape: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::pgamma(x, shape, scale, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the gamma distribution with `shape` and `scale` at
+/// probability `p`.
+///
+/// The shape is sometimes labelled `alpha`, and the scale is sometimes parameterised as
+/// (`1 / lambda`).
+///
+/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn gamma_quantile(p: f64, shape: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qgamma(p, shape, scale, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Beta distribution
+
+/// Evaluate the probability density function of the beta distribution with parameters `a` and `b`
+/// at `x`.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn beta_pdf(x: f64, a: f64, b: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dbeta(x, a, b, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the beta distribution with parameters `a` and
+/// `b` at `x`.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn beta_cdf(x: f64, a: f64, b: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::pbeta(x, a, b, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the beta distribution with parameters `a` and `b` at
+/// probability `p`.
+///
+/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn beta_quantile(p: f64, a: f64, b: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qbeta(p, a, b, c_bool(lower_tail), c_bool(log_p)) }
+}
+// Log-normal distribution
+
+/// Evaluate the probability density function of the log-normal distribution with parameters
+/// `mean_log` and `sd_log` at `x`.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn lognormal_pdf(x: f64, mean_log: f64, sd_log: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dlnorm(x, mean_log, sd_log, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the log-normal distribution with parameters
+/// `mean_log` and `sd_log` at `x`.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn lognormal_cdf(x: f64, mean_log: f64, sd_log: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::plnorm(x, mean_log, sd_log, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the log-normal distribution with parameters `mean_log` and
+/// `sd_log` at probability `p`.
+///
+/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn lognormal_quantile(
+    p: f64,
+    mean_log: f64,
+    sd_log: f64,
+    lower_tail: bool,
+    log_p: bool,
+) -> f64 {
+    unsafe { ffi::qlnorm(p, mean_log, sd_log, c_bool(lower_tail), c_bool(log_p)) }
+}
+// TODO all other distributions. r* functions (you can get their behaviour from the `rand` family
+// of crates though).
 
 /// Helper to convert rust bools to c bools. Should be compiled away during optimization.
 #[inline(always)]
@@ -72,6 +235,26 @@ fn c_bool(v: bool) -> i32 {
         1
     } else {
         0
+    }
+}
+
+/// Helper to return zero, taking logs if necessary
+#[inline(always)]
+fn zero(log_p: bool) -> f64 {
+    if log_p {
+        f64::NEG_INFINITY
+    } else {
+        0.0
+    }
+}
+
+/// Helper to return 1, taking logs if necessary
+#[inline(always)]
+fn one(log_p: bool) -> f64 {
+    if log_p {
+        0.0
+    } else {
+        1.0
     }
 }
 
