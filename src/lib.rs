@@ -92,7 +92,7 @@ pub fn normal_cdf(x: f64, mu: f64, sigma: f64, lower_tail: bool, log_p: bool) ->
 /// Evaluate the quantile function of the normal distribution with mean `mu` and
 /// variance `sigma` squared at probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -176,7 +176,7 @@ pub fn gamma_cdf(x: f64, shape: f64, scale: f64, lower_tail: bool, log_p: bool) 
 /// The shape is sometimes labelled `alpha`, and the scale is sometimes parameterised as
 /// (`1 / lambda`).
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -213,7 +213,7 @@ pub fn beta_cdf(x: f64, a: f64, b: f64, lower_tail: bool, log_p: bool) -> f64 {
 /// Evaluate the quantile function of the beta distribution with parameters `a` and `b` at
 /// probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -250,7 +250,7 @@ pub fn lognormal_cdf(x: f64, mean_log: f64, sd_log: f64, lower_tail: bool, log_p
 /// Evaluate the quantile function of the log-normal distribution with parameters `mean_log` and
 /// `sd_log` at probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -293,7 +293,7 @@ pub fn chi_squared_cdf(x: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
 /// Evaluate the quantile function of the chi-squared distribution with `df` degrees of freedom at
 /// probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -330,7 +330,7 @@ pub fn noncentral_chi_squared_cdf(x: f64, df: f64, ncp: f64, lower_tail: bool, l
 /// Evaluate the quantile function of the non-central chi-squared distribution with `df` degrees of
 /// freedom and non-centrality parameter `ncp` at probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -374,7 +374,7 @@ pub fn f_cdf(x: f64, df1: f64, df2: f64, lower_tail: bool, log_p: bool) -> f64 {
 /// Evaluate the quantile function of the f distribution with parameters `df1` and `df2` at
 /// probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -411,7 +411,7 @@ pub fn students_t_cdf(x: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
 /// Evaluate the quantile function of the student's t distribution with degrees of
 /// freedom `df` at probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -448,7 +448,7 @@ pub fn binomial_cdf(x: f64, n: f64, p: f64, lower_tail: bool, log_p: bool) -> f6
 /// Evaluate the quantile function of the binomial distribution with `n` trials and
 /// probability of success `pr` at probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -488,7 +488,7 @@ pub fn cauchy_cdf(x: f64, location: f64, scale: f64, lower_tail: bool, log_p: bo
 /// Evaluate the quantile function of the Cauchy distribution with parameters
 /// `location` and `scale` at probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
@@ -525,7 +525,7 @@ pub fn exponential_cdf(x: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64
 /// Evaluate the quantile function of the exponential distribution with given `scale` at
 /// probability `p`.
 ///
-/// If `lower_tail` is true, then `p` is the integral from `∞` to `x`, else it is the integral
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
 /// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
 ///
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
