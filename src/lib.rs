@@ -29,21 +29,18 @@ pub mod ffi {
 // Normal distribution
 
 /// Evaluate the probability density function of the normal distribution with mean `mu` and
-/// variance `sigma` squared at `x`.
+/// variance `sigma`<sup>2</sup> at `x`.
 ///
-/// The formula for this function is:
-///
+/// The formula for this function is
 /// <math>
 ///   <mfrac>
 ///     <mrow>
 ///       <mn>1</mn>
 ///     </mrow>
 ///     <mrow>
-///       <mi>&sigma;</mi>
+///       <mi>σ</mi>
 ///       <msqrt>
-///         <mn>2</mn>
-///         <!-- <mo>&InvisibleTimes;</mo> -- this breaks layout -->
-///         <mi>&pi;</mi>
+///         <mn>2π</mn>
 ///       </msqrt>
 ///     </mrow>
 ///   </mfrac>
@@ -55,19 +52,22 @@ pub mod ffi {
 ///         <mn>1</mn>
 ///         <mn>2</mn>
 ///       </mfrac>
-///       <mfenced open="(" close=")">
+///       <mrow>
+///         <mo>(</mo>
 ///         <mfrac>
 ///           <mrow>
 ///             <mi>x</mi>
 ///             <mo>-</mo>
-///             <mn>&mu;</mn>
+///             <mn>μ</mn>
 ///           </mrow>
-///           <mn>&sigma;</mn>
+///           <mn>σ</mn>
 ///         </mfrac>
-///       </mfenced>
+///         <mo>)</mo>
+///       </row>
 ///     </mrow>
 ///   </msup>
 /// </math>
+/// where μ is the mean, and σ<sup>2</sup> is the variance.
 ///
 /// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
 /// higher numerical accuracy than calling `.ln()` on the result.
@@ -468,7 +468,7 @@ pub fn binomial_quantile(p: f64, n: f64, pr: f64, lower_tail: bool, log_p: bool)
 /// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
 /// higher numerical accuracy than calling `.ln()` on the result.
 pub fn cauchy_pdf(x: f64, location: f64, scale: f64, give_log: bool) -> f64 {
-    unsafe { ffi::dbinom(x, location, scale, c_bool(give_log)) }
+    unsafe { ffi::dcauchy(x, location, scale, c_bool(give_log)) }
 }
 
 /// Evaluate the culmulative distribution function of the Cauchy distribution with parameters
@@ -482,7 +482,7 @@ pub fn cauchy_pdf(x: f64, location: f64, scale: f64, give_log: bool) -> f64 {
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
 /// higher numerical accuracy than calling `.ln()` on the result.
 pub fn cauchy_cdf(x: f64, location: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
-    unsafe { ffi::pbinom(x, location, scale, c_bool(lower_tail), c_bool(log_p)) }
+    unsafe { ffi::pcauchy(x, location, scale, c_bool(lower_tail), c_bool(log_p)) }
 }
 
 /// Evaluate the quantile function of the Cauchy distribution with parameters
@@ -494,7 +494,7 @@ pub fn cauchy_cdf(x: f64, location: f64, scale: f64, lower_tail: bool, log_p: bo
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
 /// higher numerical accuracy than calling `.ln()`.
 pub fn cauchy_quantile(p: f64, location: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
-    unsafe { ffi::qbinom(p, location, scale, c_bool(lower_tail), c_bool(log_p)) }
+    unsafe { ffi::qcauchy(p, location, scale, c_bool(lower_tail), c_bool(log_p)) }
 }
 
 // Exponential distribution
@@ -505,7 +505,7 @@ pub fn cauchy_quantile(p: f64, location: f64, scale: f64, lower_tail: bool, log_
 /// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
 /// higher numerical accuracy than calling `.ln()` on the result.
 pub fn exponential_pdf(x: f64, scale: f64, give_log: bool) -> f64 {
-    unsafe { ffi::dbinom(x, scale, c_bool(give_log)) }
+    unsafe { ffi::dexp(x, scale, c_bool(give_log)) }
 }
 
 /// Evaluate the culmulative distribution function of the exponential distribution with given
@@ -519,7 +519,7 @@ pub fn exponential_pdf(x: f64, scale: f64, give_log: bool) -> f64 {
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
 /// higher numerical accuracy than calling `.ln()` on the result.
 pub fn exponential_cdf(x: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
-    unsafe { ffi::pbinom(x, scale, c_bool(lower_tail), c_bool(log_p)) }
+    unsafe { ffi::pexp(x, scale, c_bool(lower_tail), c_bool(log_p)) }
 }
 
 /// Evaluate the quantile function of the exponential distribution with given `scale` at
@@ -531,11 +531,486 @@ pub fn exponential_cdf(x: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64
 /// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
 /// higher numerical accuracy than calling `.ln()`.
 pub fn exponential_quantile(p: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
-    unsafe { ffi::qbinom(p, scale, c_bool(lower_tail), c_bool(log_p)) }
+    unsafe { ffi::qexp(p, scale, c_bool(lower_tail), c_bool(log_p)) }
 }
 
-// TODO all other distributions. r* functions (you can get their behaviour from the `rand` family
-// of crates though).
+// Geometric distribution
+
+/// Evaluate the probability density function of the geometric distribution with trial probability
+/// `p` at `x`. `P(X=x) = p(1-p)^x`.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn geometric_pdf(x: f64, p: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dgeom(x, p, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the geometric distribution with trial
+/// probability `p` at `x`. `P(X=x) = p(1-p)^x`.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn geometric_cdf(x: f64, p: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::pgeom(x, p, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the geometric distribution with trial probability `prob` at
+/// probability `p`. `P(X=x) = p(1-p)^x`.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn geometric_quantile(p: f64, prob: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qgeom(p, prob, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Hypergeometric distribution
+
+/// Evaluate the probability density function of the hypergeometric distribution. If `samples`
+/// samples were taken at random from a collection of `succ` successes and `fail` failures, then
+/// this function evaluates the chance of `x` successes being in the sample.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn hypergeometric_pdf(x: f64, succ: f64, fail: f64, samples: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dhyper(x, succ, fail, samples, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the hypergeometric distribution. If `samples`
+/// samples were taken at random from a collection of `succ` successes and `fail` failures, then
+/// this function evaluates the chance of `≤x` successes being in the sample.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn hypergeometric_cdf(
+    x: f64,
+    succ: f64,
+    fail: f64,
+    samples: f64,
+    lower_tail: bool,
+    log_p: bool,
+) -> f64 {
+    unsafe { ffi::phyper(x, succ, fail, samples, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the hypergeometric distribution. If `samples`
+/// samples were taken at random from a collection of `succ` successes and `fail` failures, then
+/// this function evaluates the number of samples where there is `p` probability there are <= that
+/// many successes.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn hypergeometric_quantile(
+    p: f64,
+    succ: f64,
+    fail: f64,
+    samples: f64,
+    lower_tail: bool,
+    log_p: bool,
+) -> f64 {
+    unsafe { ffi::qhyper(p, succ, fail, samples, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Negative binomial distribution
+
+/// Evaluate the probability density function of the negative binomial distribution. If there is
+/// `prob` probability of successin a Bernoulli trial, and we perform trials until we see `size`
+/// successes, then this function returns the probability of seeing `x` failures in those trials.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn neg_binomial_pdf(x: f64, size: f64, prob: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dnbinom(x, size, prob, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the negative binomial distribution. If there
+/// is `prob` probability of successin a Bernoulli trial, and we perform trials until we see `size`
+/// successes, then this function returns the probability of seeing `≤x` failures in those trials.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn neg_binomial_cdf(x: f64, size: f64, prob: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::pnbinom(x, size, prob, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the negative binomial distribution. If there
+/// is `prob` probability of successin a Bernoulli trial, and we perform trials until we see `size`
+/// successes, then this function returns the number of failures we would expect to see with
+/// probability `p`.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn neg_binomial_quantile(p: f64, size: f64, prob: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qnbinom(p, size, prob, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// TODO negative binomial `_mu` - I don't know what it means or what it evaluates.
+
+// Poisson distribution
+
+/// Evaluate the probability density function of the poisson distribution.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn poisson_pdf(x: f64, lambda: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dpois(x, lambda, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the poisson distribution.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn poisson_cdf(x: f64, lambda: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::ppois(x, lambda, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the poisson distribution.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn poisson_quantile(p: f64, lambda: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qpois(p, lambda, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Weibull distribution
+
+/// Evaluate the probability density function of the Weibull distribution.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn weibull_pdf(x: f64, shape: f64, scale: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dweibull(x, shape, scale, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the Weibull distribution.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn weibull_cdf(x: f64, shape: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::pweibull(x, shape, scale, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the Weibull distribution.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn weibull_quantile(p: f64, shape: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qweibull(p, shape, scale, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Logistic distribution
+
+/// Evaluate the probability density function of the logistic distribution.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn logistic_pdf(x: f64, location: f64, scale: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dlogis(x, location, scale, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the logistic distribution.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn logistic_cdf(x: f64, location: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::plogis(x, location, scale, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the logistic distribution.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn logistic_quantile(p: f64, location: f64, scale: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qlogis(p, location, scale, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Non-central beta distribution
+
+/// Evaluate the probability density function of the non-central beta distribution.
+///
+/// These functions use different algorithms to the beta distribution, so setting `ncp = 0` might
+/// not give the same result.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn non_central_beta_pdf(x: f64, a: f64, b: f64, ncp: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dnbeta(x, a, b, ncp, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the non-central beta distribution.
+///
+/// These functions use different algorithms to the beta distribution, so setting `ncp = 0` might
+/// not give the same result.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn non_central_beta_cdf(
+    x: f64,
+    a: f64,
+    b: f64,
+    ncp: f64,
+    lower_tail: bool,
+    log_p: bool,
+) -> f64 {
+    unsafe { ffi::pnbeta(x, a, b, ncp, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the non-central beta distribution.
+///
+/// These functions use different algorithms to the beta distribution, so setting `ncp = 0` might
+/// not give the same result.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn non_central_beta_quantile(
+    p: f64,
+    a: f64,
+    b: f64,
+    ncp: f64,
+    lower_tail: bool,
+    log_p: bool,
+) -> f64 {
+    unsafe { ffi::qnbeta(p, a, b, ncp, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Non-central f distribution
+
+/// Evaluate the probability density function of the non-central f distribution.
+///
+/// These functions use different algorithms to the f distribution, so setting `ncp = 0` might
+/// not give the same result.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn non_central_f_pdf(x: f64, df1: f64, df2: f64, ncp: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dnf(x, df1, df2, ncp, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the non-central f distribution.
+///
+/// These functions use different algorithms to the f distribution, so setting `ncp = 0` might
+/// not give the same result.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn non_central_f_cdf(
+    x: f64,
+    df1: f64,
+    df2: f64,
+    ncp: f64,
+    lower_tail: bool,
+    log_p: bool,
+) -> f64 {
+    unsafe { ffi::pnf(x, df1, df2, ncp, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the non-central f distribution.
+///
+/// These functions use different algorithms to the f distribution, so setting `ncp = 0` might
+/// not give the same result.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn non_central_f_quantile(
+    p: f64,
+    df1: f64,
+    df2: f64,
+    ncp: f64,
+    lower_tail: bool,
+    log_p: bool,
+) -> f64 {
+    unsafe { ffi::qnf(p, df1, df2, ncp, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Non-central student's t distribution
+
+/// Evaluate the probability density function of the non-central student's t distribution.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn non_central_t_pdf(x: f64, df: f64, ncp: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dnt(x, df, ncp, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the non-central student's t distribution.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn non_central_t_cdf(x: f64, df: f64, ncp: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::pnt(x, df, ncp, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the non-central student's t distribution.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn non_central_t_quantile(p: f64, df: f64, ncp: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qnt(p, df, ncp, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Studentized range distribution
+
+/// Evaluate the culmulative distribution function of the studentized range distribution.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn tukey_pdf(q: f64, rr: f64, cc: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::ptukey(q, rr, cc, df, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the studentized range distribution.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn tukey_quantile(p: f64, rr: f64, cc: f64, df: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qtukey(p, rr, cc, df, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Wilcoxon rank-sum distribution
+
+/// Evaluate the probability density function of the Wilcoxon rank-sum distribution.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn wilcox_pdf(x: f64, m: f64, n: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dwilcox(x, m, n, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the Wilcoxon rank-sum distribution.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn wilcox_cdf(x: f64, m: f64, n: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::pwilcox(x, m, n, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the Wilcoxon rank-sum distribution.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn wilcox_quantile(p: f64, m: f64, n: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qwilcox(p, m, n, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// Wilcoxon signed rank distribution
+
+/// Evaluate the probability density function of the Wilcoxon signed rank distribution.
+///
+/// If `give_log` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn signrank_pdf(x: f64, n: f64, give_log: bool) -> f64 {
+    unsafe { ffi::dsignrank(x, n, c_bool(give_log)) }
+}
+
+/// Evaluate the culmulative distribution function of the signrankon signed rank distribution.
+///
+/// If `lower_tail` is true, the integral from `-∞` to `x` is evaluated, else the
+/// integral from `x` to `∞` is evaluated instead. "Usual" behaviour corresponds to
+/// `true`. Using `lower_tail = false` gives higher numerical accuracy than performing the
+/// calculation `1 - result` on `lower_tail = true` (when the result is close to 1).
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()` on the result.
+pub fn signrank_cdf(x: f64, n: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::psignrank(x, n, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+/// Evaluate the quantile function of the signrankon signed rank distribution.
+///
+/// If `lower_tail` is true, then `p` is the integral from `-∞` to `x`, else it is the integral
+/// from `x` to `∞`. "Usual" behaviour corresponds to `true`.
+///
+/// If `log_p` is true, the natural logarithm of the value will be returned, with potentially
+/// higher numerical accuracy than calling `.ln()`.
+pub fn signrank_quantile(p: f64, n: f64, lower_tail: bool, log_p: bool) -> f64 {
+    unsafe { ffi::qsignrank(p, n, c_bool(lower_tail), c_bool(log_p)) }
+}
+
+// TODO maybe r* functions (you can get their behaviour from the `rand` family
+// of crates though). Also some general math functions like the beta/gamma functions, and others.
+// I'm not sure if they should be included in this crate or not.
 
 /// Helper to convert rust bools to c bools. Should be compiled away during optimization.
 #[inline(always)]
@@ -549,8 +1024,8 @@ fn c_bool(v: bool) -> i32 {
 
 /// Helper to return zero, taking logs if necessary
 #[inline(always)]
-fn zero(log_p: bool) -> f64 {
-    if log_p {
+fn zero(log: bool) -> f64 {
+    if log {
         f64::NEG_INFINITY
     } else {
         0.0
@@ -559,8 +1034,8 @@ fn zero(log_p: bool) -> f64 {
 
 /// Helper to return 1, taking logs if necessary
 #[inline(always)]
-fn one(log_p: bool) -> f64 {
-    if log_p {
+fn one(log: bool) -> f64 {
+    if log {
         0.0
     } else {
         1.0
