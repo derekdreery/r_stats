@@ -1045,7 +1045,6 @@ fn one(log: bool) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::ffi;
-    use float_cmp::approx_eq;
 
     #[test]
     fn qf() {
@@ -1054,4 +1053,6 @@ mod tests {
             assert!((ffi::qf(0.95, 5., 2., 1, 0) - 19.296).abs() < 1e-2);
         }
     }
+
+    // TODO more tests
 }
