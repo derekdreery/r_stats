@@ -1,5 +1,5 @@
 [package]
-name = "r_stats"
+name = "r_mathlib"
 description = "A port of R's `nmath` stats module to Rust."
 version = "0.1.0"
 authors = ["Richard Dodd <richard.o.dodd@gmail.com>"]
