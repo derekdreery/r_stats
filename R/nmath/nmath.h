@@ -119,9 +119,9 @@ void R_CheckUserInterrupt(void);
 #endif
 int R_finite(double);
 
-#define ML_POSINF	(1.0 / 0.0)
-#define ML_NEGINF	((-1.0) / 0.0)
-#define ML_NAN		(0.0 / 0.0)
+#define ML_POSINF	INFINITY
+#define ML_NEGINF	(-INFINITY)
+#define ML_NAN		NAN
 
 #define _(String) String
 #endif /* standalone */

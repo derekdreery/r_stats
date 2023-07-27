@@ -166,14 +166,19 @@ fn main() {
         .include("R/nmath")
         .include("R/include")
         .include("R/config")
-        .files(fs::read_dir("R/nmath").unwrap().filter_map(|entry| {
-            let path = entry.unwrap().path();
-            if path.extension() == Some(c_test.as_os_str()) {
-                Some(path)
-            } else {
-                None
-            }
-        }))
+        .files(
+            fs::read_dir("R/nmath")
+                .unwrap()
+                .chain(fs::read_dir("R/nmath/standalone").unwrap())
+                .filter_map(|entry| {
+                    let path = entry.unwrap().path();
+                    if path.extension() == Some(c_test.as_os_str()) {
+                        Some(path)
+                    } else {
+                        None
+                    }
+                }),
+        )
         .warnings(false)
         .compile("nmath");
 
@@ -181,7 +186,7 @@ fn main() {
         .header("wrapper.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks));
     for fn_name in FN_NAMES.iter() {
-        builder = builder.whitelist_function(fn_name);
+        builder = builder.allowlist_function(fn_name);
     }
     let bindings = builder.generate().expect("Unable to generate bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());

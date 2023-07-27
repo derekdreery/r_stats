@@ -1,7 +1,7 @@
 [package]
 name = "r_mathlib"
 description = "A port of R's `nmath` stats module to Rust."
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Richard Dodd <richard.o.dodd@gmail.com>"]
 edition = "2018"
 license = "GPL-2.0-or-later"
@@ -10,8 +10,8 @@ keywords = ["statistics", "stats", "r", "nmath", "quantile"]
 repository = "https://github.com/derekdreery/r_stats"
 
 [build-dependencies]
-cc = "1.0.54"
-bindgen = "0.55.1"
+bindgen = "0.66.1"
+cc = "1.0.79"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
